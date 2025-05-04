@@ -21,8 +21,7 @@ const MAX_RETRIES = 3;
     let success = false;
 
     for (let attempt = 1; attempt <= MAX_RETRIES && !success; attempt++) {
-      const context = await browser.createIncognitoBrowserContext();
-      const page = await context.newPage();
+      const page = await browser.newPage();
 
       try {
         console.log(`🌐 Navigating to signup page for ${email} (Attempt ${attempt})`);
@@ -47,7 +46,7 @@ const MAX_RETRIES = 3;
         console.log(`✅ Successfully created: ${email}`);
         success = true;
 
-        await delay(1000 + Math.floor(Math.random() * 3000));
+        await delay(1000 + Math.floor(Math.random() * 3000)); // delay to avoid rate-limiting
       } catch (err) {
         const pageTitle = await page.title().catch(() => 'No title');
         console.error(`❌ Error for ${email} (Attempt ${attempt}): ${err.message} | Page title: ${pageTitle}`);
@@ -72,8 +71,19 @@ const MAX_RETRIES = 3;
         }
       }
 
+      // 🚨 Clear session manually
+      try {
+        const client = await page.target().createCDPSession();
+        await client.send('Storage.clearCookies');
+        await page.evaluate(() => {
+          localStorage.clear();
+          sessionStorage.clear();
+        });
+      } catch (e) {
+        console.error(`⚠️ Failed to clear session for ${email}: ${e.message}`);
+      }
+
       await page.close();
-      await context.close(); // 🚨 Key: wipes cookies, local storage, and session state
     }
   }
 
