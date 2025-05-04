@@ -2,7 +2,9 @@ const puppeteer = require("puppeteer");
 
 (async () => {
   const start = parseInt(process.env.START_INDEX || "0", 10);
-  const max = 0xFFFFFFFF; // 4,294,967,295
+  const max = 0xFFFFFFFF; // up to 4,294,967,295
+
+  console.log(`🚀 Starting account creation from index ${start} to ${max}`);
 
   const browser = await puppeteer.launch({
     headless: true,
@@ -15,24 +17,31 @@ const puppeteer = require("puppeteer");
     const email = `${i}@qrlfoundation.org`;
 
     try {
+      console.log(`🌐 Navigating to signup page for ${email}`);
       await page.goto("https://account.pubby.co/start-free", {
-        waitUntil: "networkidle2",
+        waitUntil: "domcontentloaded",
+        timeout: 30000
       });
+
+      await page.waitForSelector("#firstName", { timeout: 10000 });
+      console.log(`🧾 Filling in form for ${email}`);
 
       await page.type("#firstName", email);
       await page.type("#email", email);
       await page.type("#password", email);
 
+      console.log(`🕹️ Submitting form for ${email}`);
       await Promise.all([
         page.click("#createButton"),
-        page.waitForNavigation({ waitUntil: "networkidle2", timeout: 10000 }).catch(() => null),
+        page.waitForNavigation({ waitUntil: "networkidle2", timeout: 15000 }).catch(() => null),
       ]);
 
-      console.log(`✅ Created account: ${email}`);
+      console.log(`✅ Successfully created: ${email}`);
     } catch (err) {
       console.error(`❌ Error for ${email}: ${err.message}`);
     }
   }
 
   await browser.close();
+  console.log("🎉 All done!");
 })();
