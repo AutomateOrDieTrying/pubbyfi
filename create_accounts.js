@@ -7,7 +7,7 @@ const MAX_RETRIES = 3;
 
 (async () => {
   const start = parseInt(process.env.START_INDEX || "0", 10);
-  const max = 0xFFFFFFFF; // 4,294,967,295
+  const max = 0xFFFFFFFF;
 
   console.log(`🚀 Starting account creation from index ${start} to ${max}`);
 
@@ -21,7 +21,8 @@ const MAX_RETRIES = 3;
     let success = false;
 
     for (let attempt = 1; attempt <= MAX_RETRIES && !success; attempt++) {
-      const page = await browser.newPage();
+      const context = await browser.createIncognitoBrowserContext();
+      const page = await context.newPage();
 
       try {
         console.log(`🌐 Navigating to signup page for ${email} (Attempt ${attempt})`);
@@ -30,7 +31,6 @@ const MAX_RETRIES = 3;
           timeout: 30000
         });
 
-        // Wait for the field by ID or fallback selector
         await page.waitForSelector("#firstName", { timeout: 10000 });
         console.log(`🧾 Filling in form for ${email}`);
 
@@ -46,7 +46,8 @@ const MAX_RETRIES = 3;
 
         console.log(`✅ Successfully created: ${email}`);
         success = true;
-        await delay(1000 + Math.floor(Math.random() * 3000)); // 1–4s delay
+
+        await delay(1000 + Math.floor(Math.random() * 3000));
       } catch (err) {
         const pageTitle = await page.title().catch(() => 'No title');
         console.error(`❌ Error for ${email} (Attempt ${attempt}): ${err.message} | Page title: ${pageTitle}`);
@@ -57,7 +58,6 @@ const MAX_RETRIES = 3;
 
           const html = await page.content();
           fs.writeFileSync(path.join(debugDir, `debug-${i}-attempt${attempt}.html`), html);
-
           await page.screenshot({
             path: path.join(debugDir, `debug-${i}-attempt${attempt}.png`)
           });
@@ -68,11 +68,12 @@ const MAX_RETRIES = 3;
         if (attempt === MAX_RETRIES) {
           console.error(`💥 Giving up on ${email} after ${MAX_RETRIES} attempts`);
         } else {
-          await delay(3000); // pause before retry
+          await delay(3000);
         }
       }
 
       await page.close();
+      await context.close(); // 🚨 Key: wipes cookies, local storage, and session state
     }
   }
 
