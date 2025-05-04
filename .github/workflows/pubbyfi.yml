@@ -1,0 +1,31 @@
+name: GitHub Action – Pubby Account Auto Creator
+
+on:
+  workflow_dispatch:
+    inputs:
+      start_index:
+        description: 'Start from this 32-bit integer'
+        required: false
+        default: '0'
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300  # Max allowed by GitHub (5 hours)
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      - name: Install Puppeteer
+        run: npm install puppeteer
+
+      - name: Start Account Bot
+        run: node create_accounts.js
+        env:
+          START_INDEX: ${{ github.event.inputs.start_index }}
