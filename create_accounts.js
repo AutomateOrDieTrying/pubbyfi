@@ -4,7 +4,11 @@ const puppeteer = require("puppeteer");
   const start = parseInt(process.env.START_INDEX || "0", 10);
   const max = 0xFFFFFFFF; // 4,294,967,295
 
-  const browser = await puppeteer.launch({ headless: true });
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox']
+  });
+
   const page = await browser.newPage();
 
   for (let i = start; i <= max; i++) {
@@ -15,7 +19,6 @@ const puppeteer = require("puppeteer");
         waitUntil: "networkidle2",
       });
 
-      // Use the same email as name, email, and password
       await page.type("#firstName", email);
       await page.type("#email", email);
       await page.type("#password", email);
