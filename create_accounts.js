@@ -1,12 +1,13 @@
 const puppeteer = require("puppeteer");
 const fs = require("fs");
+const path = require("path");
 
 const delay = ms => new Promise(res => setTimeout(res, ms));
 const MAX_RETRIES = 3;
 
 (async () => {
   const start = parseInt(process.env.START_INDEX || "0", 10);
-  const max = 0xFFFFFFFF;
+  const max = 0xFFFFFFFF; // 4,294,967,295
 
   console.log(`🚀 Starting account creation from index ${start} to ${max}`);
 
@@ -15,13 +16,13 @@ const MAX_RETRIES = 3;
     args: ['--no-sandbox', '--disable-setuid-sandbox']
   });
 
-  const page = await browser.newPage();
-
   for (let i = start; i <= max; i++) {
     const email = `${i}@qrlfoundation.org`;
-
     let success = false;
+
     for (let attempt = 1; attempt <= MAX_RETRIES && !success; attempt++) {
+      const page = await browser.newPage();
+
       try {
         console.log(`🌐 Navigating to signup page for ${email} (Attempt ${attempt})`);
         await page.goto("https://account.pubby.co/start-free", {
@@ -29,6 +30,7 @@ const MAX_RETRIES = 3;
           timeout: 30000
         });
 
+        // Wait for the field by ID or fallback selector
         await page.waitForSelector("#firstName", { timeout: 10000 });
         console.log(`🧾 Filling in form for ${email}`);
 
@@ -44,27 +46,36 @@ const MAX_RETRIES = 3;
 
         console.log(`✅ Successfully created: ${email}`);
         success = true;
-
-        // Optional: wait 1–3 seconds before next iteration
-        await delay(1000 + Math.floor(Math.random() * 2000));
+        await delay(1000 + Math.floor(Math.random() * 3000)); // 1–4s delay
       } catch (err) {
-        console.error(`❌ Error for ${email} (Attempt ${attempt}): ${err.message}`);
+        const pageTitle = await page.title().catch(() => 'No title');
+        console.error(`❌ Error for ${email} (Attempt ${attempt}): ${err.message} | Page title: ${pageTitle}`);
 
-        // Optionally write page HTML to debug
         try {
+          const debugDir = path.join(__dirname, 'debug');
+          if (!fs.existsSync(debugDir)) fs.mkdirSync(debugDir);
+
           const html = await page.content();
-          fs.writeFileSync(`debug-${i}-attempt${attempt}.html`, html);
-        } catch (_) {}
+          fs.writeFileSync(path.join(debugDir, `debug-${i}-attempt${attempt}.html`), html);
+
+          await page.screenshot({
+            path: path.join(debugDir, `debug-${i}-attempt${attempt}.png`)
+          });
+        } catch (e) {
+          console.error(`⚠️ Failed to dump debug info: ${e.message}`);
+        }
 
         if (attempt === MAX_RETRIES) {
           console.error(`💥 Giving up on ${email} after ${MAX_RETRIES} attempts`);
         } else {
-          await delay(2000); // wait before retrying
+          await delay(3000); // pause before retry
         }
       }
+
+      await page.close();
     }
   }
 
   await browser.close();
-  console.log("🎉 Finished all iterations.");
+  console.log("🎉 All done!");
 })();
